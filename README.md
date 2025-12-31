@@ -4,4 +4,4 @@ A Godot 3.5.3 simulation with two objects and the relativistic effects of near l
 # Playable on browser
 This project is available to play through this [itch.io page](https://guschuma.itch.io/special-relativity-simulation)
 
-!(Demo animation)[Assets/demo.gif]
+![Demo animation](Assets/demo.gif)
