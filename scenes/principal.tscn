@@ -1,0 +1,619 @@
+[gd_scene load_steps=36 format=2]
+
+[ext_resource path="res://scripts/totalSpaceTime.gd" type="Script" id=1]
+[ext_resource path="res://scripts/FollowMouse.gd" type="Script" id=2]
+[ext_resource path="res://scripts/totalMomentum.gd" type="Script" id=3]
+[ext_resource path="res://scripts/RelativeTime.gd" type="Script" id=4]
+[ext_resource path="res://scripts/Node2D.gd" type="Script" id=5]
+[ext_resource path="res://scripts/headlights.gd" type="Script" id=6]
+[ext_resource path="res://scripts/MomentumVisualizer.gd" type="Script" id=7]
+[ext_resource path="res://scripts/ForceVisualizer.gd" type="Script" id=8]
+[ext_resource path="res://scripts/relativeBody.gd" type="Script" id=9]
+[ext_resource path="res://scripts/Button.gd" type="Script" id=10]
+[ext_resource path="res://scripts/LineEditWave.gd" type="Script" id=11]
+[ext_resource path="res://scripts/Global.gd" type="Script" id=12]
+[ext_resource path="res://scripts/EditLight.gd" type="Script" id=13]
+[ext_resource path="res://scripts/SpaceTimeVisualizer.gd" type="Script" id=14]
+[ext_resource path="res://scripts/Time.gd" type="Script" id=15]
+[ext_resource path="res://CourierPrime-Regular.ttf" type="DynamicFontData" id=16]
+
+[sub_resource type="QuadMesh" id=4]
+
+[sub_resource type="Shader" id=10]
+code = "shader_type canvas_item;
+
+uniform sampler2D prev_tex;
+uniform sampler2D wall_tex;
+uniform vec2 texel_size;
+uniform float damping = 0.995;
+uniform float wave_velocity = 0.5;
+
+uniform vec2 body_pos0;
+uniform vec2 body_pos1;
+uniform float injection = 1.0;
+
+void fragment() {
+    vec2 uv = UV;
+
+    float wall = texture(wall_tex, uv).r;
+    if (wall > 0.5) {
+        COLOR = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+	else {
+	    float u  = texture(prev_tex, uv).r;
+	    float u1 = texture(prev_tex, uv).g;
+
+	    float u_l = texture(prev_tex, uv + vec2(-texel_size.x, 0)).r;
+	    float u_r = texture(prev_tex, uv + vec2( texel_size.x, 0)).r;
+	    float u_u = texture(prev_tex, uv + vec2(0, -texel_size.y)).r;
+	    float u_d = texture(prev_tex, uv + vec2(0,  texel_size.y)).r;
+
+	    if (texture(wall_tex, uv + vec2(-texel_size.x, 0)).r > 0.5) u_l = u1;
+	    if (texture(wall_tex, uv + vec2( texel_size.x, 0)).r > 0.5) u_r = u1;
+	    if (texture(wall_tex, uv + vec2(0, -texel_size.y)).r > 0.5) u_u = u1;
+	    if (texture(wall_tex, uv + vec2(0,  texel_size.y)).r > 0.5) u_d = u1;
+
+	    float laplacian = u_l + u_r + u_u + u_d - 4.0 * u;
+		float wave = wave_velocity*0.0055;
+	    float u_next = 2.0 * u - u1 + wave * wave * laplacian;
+	    u_next *= damping;
+
+	    float d = length(FRAGCOORD.xy - body_pos0) - 20.0;
+	    if(d > 0.0) u_next += injection * exp(-d * d);
+		d = length(FRAGCOORD.xy - body_pos1) - 20.0;
+	    if(d > 0.0) u_next += injection * exp(-d * d );
+
+	    COLOR = vec4(u_next, u, 0.0, 1.0);
+	}
+}
+"
+
+[sub_resource type="ShaderMaterial" id=11]
+shader = SubResource( 10 )
+shader_param/texel_size = null
+shader_param/damping = 0.995
+shader_param/wave_velocity = 100.0
+shader_param/body_pos0 = null
+shader_param/body_pos1 = null
+shader_param/injection = 10.0
+
+[sub_resource type="Shader" id=12]
+code = "shader_type canvas_item;
+
+uniform sampler2D prev_tex;
+uniform sampler2D wall_tex;
+uniform vec2 texel_size;
+uniform float damping = 0.995;
+uniform float wave_velocity = 0.5;
+
+uniform vec2 body_pos0;
+uniform vec2 body_pos1;
+uniform float injection = 1.0;
+
+void fragment() {
+    vec2 uv = UV;
+
+    float wall = texture(wall_tex, uv).r;
+    if (wall > 0.5) {
+        COLOR = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+	else {
+	    float u  = texture(prev_tex, uv).r;
+	    float u1 = texture(prev_tex, uv).g;
+
+	    float u_l = texture(prev_tex, uv + vec2(-texel_size.x, 0)).r;
+	    float u_r = texture(prev_tex, uv + vec2( texel_size.x, 0)).r;
+	    float u_u = texture(prev_tex, uv + vec2(0, -texel_size.y)).r;
+	    float u_d = texture(prev_tex, uv + vec2(0,  texel_size.y)).r;
+
+	    if (texture(wall_tex, uv + vec2(-texel_size.x, 0)).r > 0.5) u_l = u1;
+	    if (texture(wall_tex, uv + vec2( texel_size.x, 0)).r > 0.5) u_r = u1;
+	    if (texture(wall_tex, uv + vec2(0, -texel_size.y)).r > 0.5) u_u = u1;
+	    if (texture(wall_tex, uv + vec2(0,  texel_size.y)).r > 0.5) u_d = u1;
+
+	    float laplacian = u_l + u_r + u_u + u_d - 4.0 * u;
+		float wave = wave_velocity*0.0055;
+	    float u_next = 2.0 * u - u1 + wave * wave * laplacian;
+	    u_next *= damping;
+
+	    float d = length(FRAGCOORD.xy - body_pos0) - 20.0;
+	    if(d > 0.0) u_next += injection * exp(-d * d);
+		d = length(FRAGCOORD.xy - body_pos1) - 20.0;
+	    if(d > 0.0) u_next += injection * exp(-d * d );
+
+	    COLOR = vec4(u_next, u, 0.0, 1.0);
+	}
+}
+"
+
+[sub_resource type="ShaderMaterial" id=13]
+shader = SubResource( 12 )
+shader_param/texel_size = null
+shader_param/damping = 0.995
+shader_param/wave_velocity = 100.0
+shader_param/body_pos0 = null
+shader_param/body_pos1 = null
+shader_param/injection = 10.0
+
+[sub_resource type="Shader" id=14]
+code = "shader_type canvas_item;
+
+uniform sampler2D wave_tex;
+uniform sampler2D prev_wave_tex;
+
+uniform float base_wavelength = 900.0;
+uniform float doppler_strength = 300;
+
+vec3 wavelength_to_rgb(float wavelength){
+    float r=0.0; float g=0.0; float b=0.0;
+
+	if(wavelength<380.0){
+		r=0.0; g=0.0; b=0.0;
+	} else if(wavelength>=380.0 && wavelength<=440.0){
+        r=-(wavelength-440.0)/60.0; b=1.0-r; g=0.0;
+    } else if(wavelength<=490.0){
+        g=(wavelength-440.0)/50.0; b=1.0; r = 0.0;
+    } else if(wavelength<=510.0){
+        g=1.0; b=-(wavelength-510.0)/20.0; r =0.0;
+    } else if(wavelength<=580.0){
+        r=(wavelength-510.0)/70.0; g=1.0; b = 0.0;
+    } else if(wavelength<=645.0){
+        r=1.0; g=-(wavelength-645.0)/65.0; b = 0.0;
+    } else if(wavelength<=780.0){
+        r=1.0; g=0.0; b=0.0;
+    }
+
+    float intensity = 1.0;
+    if(wavelength > 700.0)
+        intensity = (780.0-wavelength)/80.0;
+    else if(wavelength < 420.0)
+        intensity = (wavelength-380.0)/40.0;
+
+    return vec3(r,g,b) * intensity;
+}
+float rand(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453);
+}
+
+void fragment() {
+    vec2 uv = UV;
+
+    float u_now  = texture(wave_tex, uv).r;
+    float u_prev = texture(prev_wave_tex, uv).r;
+	
+	float intensity = abs(u_now) * 1.0;
+    // temporal derivative → apparent frequency shift
+    float du_dt = (u_now - u_prev) / max(abs(u_now) + 0.001, 0.01);
+
+    // Doppler-like wavelength shift
+    float wavelength = base_wavelength - du_dt * doppler_strength;
+	
+
+    vec3 color = wavelength_to_rgb(wavelength);
+    // brightness from wave amplitude
+	color += vec3(0.1, 0.1, 0.1);
+    color *= intensity;
+
+
+    COLOR = vec4(color, 1.0);
+}
+
+"
+
+[sub_resource type="ShaderMaterial" id=15]
+shader = SubResource( 14 )
+shader_param/base_wavelength = 420.0
+shader_param/doppler_strength = 200.0
+
+[sub_resource type="Gradient" id=8]
+interpolation_mode = 2
+offsets = PoolRealArray( 0.0139665, 1 )
+colors = PoolColorArray( 1, 1, 1, 1, 0, 0, 0, 1 )
+
+[sub_resource type="GradientTexture2D" id=9]
+gradient = SubResource( 8 )
+fill = 1
+fill_from = Vector2( 0.529167, 0.518839 )
+fill_to = Vector2( 0.00833333, 0.516755 )
+
+[sub_resource type="CircleShape2D" id=2]
+radius = 20.0
+
+[sub_resource type="CanvasItemMaterial" id=16]
+blend_mode = 1
+
+[sub_resource type="DynamicFont" id=22]
+font_data = ExtResource( 16 )
+
+[sub_resource type="DynamicFont" id=23]
+font_data = ExtResource( 16 )
+
+[sub_resource type="DynamicFont" id=21]
+size = 10
+font_data = ExtResource( 16 )
+
+[sub_resource type="DynamicFont" id=24]
+font_data = ExtResource( 16 )
+
+[sub_resource type="DynamicFont" id=20]
+size = 13
+font_data = ExtResource( 16 )
+
+[sub_resource type="RectangleShape2D" id=3]
+extents = Vector2( 519, 37.5 )
+
+[sub_resource type="Shader" id=17]
+code = "// chromatic aberration
+//---------------------------------
+
+shader_type canvas_item;
+
+uniform vec2 r_displacement = vec2(3.0, 0.0);
+uniform vec2 g_displacement = vec2(0.0, 0.0);
+uniform vec2 b_displacement = vec2(-3.0, 0.0);
+
+
+void fragment()
+{
+	float r = texture(SCREEN_TEXTURE, SCREEN_UV + vec2(SCREEN_PIXEL_SIZE*r_displacement), 0.0).r;
+	float g = texture(SCREEN_TEXTURE, SCREEN_UV + vec2(SCREEN_PIXEL_SIZE*g_displacement), 0.0).g;
+	float b = texture(SCREEN_TEXTURE, SCREEN_UV + vec2(SCREEN_PIXEL_SIZE*b_displacement), 0.0).b;
+	
+	COLOR = vec4(r, g, b, 1.0);
+}"
+
+[sub_resource type="ShaderMaterial" id=18]
+shader = SubResource( 17 )
+shader_param/r_displacement = Vector2( 1, 0 )
+shader_param/g_displacement = Vector2( 0, 0 )
+shader_param/b_displacement = Vector2( -1, 0 )
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource( 12 )
+
+[node name="Node2D" type="Node2D" parent="."]
+script = ExtResource( 5 )
+
+[node name="ViewportWallMask" type="Viewport" parent="Node2D"]
+size = Vector2( 1024, 600 )
+transparent_bg = true
+disable_3d = true
+usage = 0
+
+[node name="Walls" type="Node" parent="Node2D/ViewportWallMask"]
+
+[node name="Parede2" type="Node2D" parent="Node2D/ViewportWallMask/Walls"]
+position = Vector2( 510, 30 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Node2D/ViewportWallMask/Walls/Parede2"]
+mode = 1
+gravity_scale = 0.0
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Node2D/ViewportWallMask/Walls/Parede2/RigidBody2D"]
+scale = Vector2( 1066, 75 )
+mesh = SubResource( 4 )
+
+[node name="Parede3" type="Node2D" parent="Node2D/ViewportWallMask/Walls"]
+position = Vector2( 40, 300 )
+rotation = 1.5708
+scale = Vector2( 0.5, 1 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Node2D/ViewportWallMask/Walls/Parede3"]
+mode = 1
+gravity_scale = 0.0
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Node2D/ViewportWallMask/Walls/Parede3/RigidBody2D"]
+scale = Vector2( 1019.5, 75 )
+mesh = SubResource( 4 )
+
+[node name="Parede4" type="Node2D" parent="Node2D/ViewportWallMask/Walls"]
+position = Vector2( 500, 560 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Node2D/ViewportWallMask/Walls/Parede4"]
+mode = 1
+gravity_scale = 0.0
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Node2D/ViewportWallMask/Walls/Parede4/RigidBody2D"]
+scale = Vector2( 1047.75, 75 )
+mesh = SubResource( 4 )
+
+[node name="Parede5" type="Node2D" parent="Node2D/ViewportWallMask/Walls"]
+position = Vector2( 990, 300 )
+rotation = 1.5708
+scale = Vector2( 0.5, 1 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Node2D/ViewportWallMask/Walls/Parede5"]
+mode = 1
+gravity_scale = 0.0
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Node2D/ViewportWallMask/Walls/Parede5/RigidBody2D"]
+scale = Vector2( 1030.17, 75 )
+mesh = SubResource( 4 )
+
+[node name="ViewportA" type="Viewport" parent="Node2D"]
+size = Vector2( 1024, 600 )
+transparent_bg = true
+disable_3d = true
+usage = 0
+render_target_v_flip = true
+render_target_clear_mode = 1
+render_target_update_mode = 3
+
+[node name="ColorRect" type="ColorRect" parent="Node2D/ViewportA"]
+material = SubResource( 11 )
+margin_right = 1024.0
+margin_bottom = 600.0
+
+[node name="ViewportB" type="Viewport" parent="Node2D"]
+size = Vector2( 1024, 600 )
+transparent_bg = true
+disable_3d = true
+usage = 0
+render_target_v_flip = true
+render_target_clear_mode = 1
+render_target_update_mode = 3
+
+[node name="ColorRect" type="ColorRect" parent="Node2D/ViewportB"]
+material = SubResource( 13 )
+margin_right = 1024.0
+margin_bottom = 600.0
+
+[node name="DisplayRect" type="ColorRect" parent="Node2D"]
+material = SubResource( 15 )
+margin_right = 1024.0
+margin_bottom = 600.0
+
+[node name="KinematicBody2D2" type="KinematicBody2D" parent="Node2D" groups=["movably"]]
+position = Vector2( 300, 400 )
+input_pickable = true
+script = ExtResource( 9 )
+outlineColor = Color( 0.909804, 0.172549, 0.172549, 1 )
+
+[node name="Light2D" type="Light2D" parent="Node2D/KinematicBody2D2"]
+scale = Vector2( 1.03125, 1.01161 )
+texture = SubResource( 9 )
+energy = 1.07
+shadow_enabled = true
+shadow_color = Color( 0.470588, 0.388235, 0.388235, 0 )
+script = ExtResource( 6 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Node2D/KinematicBody2D2"]
+shape = SubResource( 2 )
+
+[node name="ForceVisualizer" type="Node2D" parent="Node2D/KinematicBody2D2"]
+script = ExtResource( 8 )
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Node2D/KinematicBody2D2"]
+modulate = Color( 0.941176, 0.964706, 0.482353, 1 )
+anchor_right = 0.789
+margin_left = -26.0
+margin_top = -6.0
+margin_right = 27.0
+margin_bottom = 8.0
+bbcode_enabled = true
+bbcode_text = "[center]0.00 s[/center]"
+text = "0.00 s"
+scroll_active = false
+script = ExtResource( 4 )
+__meta__ = {
+"_editor_description_": ""
+}
+
+[node name="KinematicBody2D3" type="KinematicBody2D" parent="Node2D" groups=["movably"]]
+position = Vector2( 700, 400 )
+input_pickable = true
+script = ExtResource( 9 )
+outlineColor = Color( 0.0941176, 0.501961, 0.976471, 1 )
+
+[node name="Light2D" type="Light2D" parent="Node2D/KinematicBody2D3"]
+scale = Vector2( 1.03125, 1.01161 )
+texture = SubResource( 9 )
+energy = 1.07
+shadow_enabled = true
+shadow_color = Color( 0.470588, 0.388235, 0.388235, 0 )
+script = ExtResource( 6 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Node2D/KinematicBody2D3"]
+shape = SubResource( 2 )
+
+[node name="ForceVisualizer" type="Node2D" parent="Node2D/KinematicBody2D3"]
+script = ExtResource( 8 )
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Node2D/KinematicBody2D3"]
+modulate = Color( 0.941176, 0.964706, 0.482353, 1 )
+anchor_right = 0.789
+margin_left = -26.0
+margin_top = -6.0
+margin_right = 27.0
+margin_bottom = 8.0
+bbcode_enabled = true
+bbcode_text = "[center]0.00 s[/center]"
+text = "0.00 s"
+scroll_active = false
+script = ExtResource( 4 )
+__meta__ = {
+"_editor_description_": ""
+}
+
+[node name="Polygon2D" type="Polygon2D" parent="Node2D"]
+material = SubResource( 16 )
+color = Color( 0.0509804, 0.054902, 0.0941176, 1 )
+polygon = PoolVector2Array( 68, 64, 64, 529, 961, 529, 956, 62 )
+
+[node name="Velocidade" type="Label" parent="."]
+margin_left = 683.0
+margin_top = 127.0
+margin_right = 943.0
+margin_bottom = 168.0
+custom_fonts/font = SubResource( 22 )
+text = "C =          px/s
+Wave speed = 	      	   px/s"
+align = 2
+
+[node name="Label" type="Label" parent="."]
+margin_left = 98.0
+margin_top = 87.0
+margin_right = 252.0
+margin_bottom = 146.0
+custom_fonts/font = SubResource( 23 )
+text = "Texto"
+script = ExtResource( 3 )
+
+[node name="MomentumVisualizer" type="Node2D" parent="Label"]
+position = Vector2( 130, 314 )
+z_index = 2
+script = ExtResource( 7 )
+scaler = 10.0
+font = SubResource( 21 )
+
+[node name="SpaceTime" type="Label" parent="."]
+margin_left = 756.0
+margin_top = 338.0
+margin_right = 936.0
+margin_bottom = 359.0
+custom_fonts/font = SubResource( 24 )
+text = "Space-time diagram"
+align = 2
+script = ExtResource( 1 )
+
+[node name="SpaceTimeVisualizer" type="Node2D" parent="SpaceTime"]
+position = Vector2( 25, 142 )
+z_index = 2
+script = ExtResource( 14 )
+font = SubResource( 20 )
+
+[node name="RichTextLabel" type="RichTextLabel" parent="."]
+modulate = Color( 0.941176, 0.964706, 0.482353, 1 )
+anchor_right = 0.789
+margin_left = 797.0
+margin_top = 82.0
+margin_right = 851.0
+margin_bottom = 96.0
+rect_scale = Vector2( 2.558, 2.552 )
+bbcode_enabled = true
+bbcode_text = "[center]0.00 s[/center]"
+text = "0.00 s"
+scroll_active = false
+script = ExtResource( 15 )
+__meta__ = {
+"_editor_description_": ""
+}
+
+[node name="Observer" type="KinematicBody2D" parent="."]
+position = Vector2( 505, 571 )
+z_index = 2
+script = ExtResource( 2 )
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="LineEdit2" type="LineEdit" parent="CanvasLayer"]
+margin_left = 829.0
+margin_top = 123.0
+margin_right = 887.0
+margin_bottom = 147.0
+align = 1
+max_length = 5
+placeholder_text = "100"
+script = ExtResource( 13 )
+
+[node name="LineEdit" type="LineEdit" parent="CanvasLayer"]
+margin_left = 828.0
+margin_top = 148.0
+margin_right = 886.0
+margin_bottom = 172.0
+align = 1
+max_length = 5
+placeholder_text = "100"
+script = ExtResource( 11 )
+color_rect_path = NodePath("../../Node2D/ViewportA/ColorRect")
+color_rect_path2 = NodePath("../../Node2D/ViewportB/ColorRect")
+
+[node name="Button" type="Button" parent="CanvasLayer"]
+margin_left = 589.0
+margin_top = 551.0
+margin_right = 680.0
+margin_bottom = 577.0
+button_mask = 3
+text = "Reset"
+script = ExtResource( 10 )
+
+[node name="Walls" type="Node" parent="."]
+
+[node name="Parede2" type="Node2D" parent="Walls"]
+position = Vector2( 510, 30 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Walls/Parede2"]
+position = Vector2( 0, 10 )
+mode = 1
+gravity_scale = 0.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/Parede2/RigidBody2D"]
+shape = SubResource( 3 )
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Walls/Parede2/RigidBody2D"]
+modulate = Color( 0.137255, 0.133333, 0.184314, 1 )
+position = Vector2( 0, -4.25 )
+scale = Vector2( 1066, 83.5 )
+mesh = SubResource( 4 )
+
+[node name="Parede3" type="Node2D" parent="Walls"]
+position = Vector2( 40, 300 )
+rotation = 1.5708
+scale = Vector2( 0.5, 1 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Walls/Parede3"]
+mode = 1
+gravity_scale = 0.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/Parede3/RigidBody2D"]
+shape = SubResource( 3 )
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Walls/Parede3/RigidBody2D"]
+modulate = Color( 0.137255, 0.133333, 0.184314, 1 )
+position = Vector2( 0, 5.505 )
+scale = Vector2( 1019.5, 86.01 )
+mesh = SubResource( 4 )
+
+[node name="Parede4" type="Node2D" parent="Walls"]
+position = Vector2( 500, 560 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Walls/Parede4"]
+mode = 1
+gravity_scale = 0.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/Parede4/RigidBody2D"]
+position = Vector2( 10, 0 )
+shape = SubResource( 3 )
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Walls/Parede4/RigidBody2D"]
+modulate = Color( 0.137255, 0.133333, 0.184314, 1 )
+position = Vector2( 14.125, 0 )
+scale = Vector2( 1047.75, 75 )
+mesh = SubResource( 4 )
+
+[node name="Parede5" type="Node2D" parent="Walls"]
+position = Vector2( 990, 300 )
+rotation = 1.5708
+scale = Vector2( 0.5, 1 )
+
+[node name="RigidBody2D" type="RigidBody2D" parent="Walls/Parede5"]
+mode = 1
+gravity_scale = 0.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/Parede5/RigidBody2D"]
+shape = SubResource( 3 )
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="Walls/Parede5/RigidBody2D"]
+modulate = Color( 0.137255, 0.133333, 0.184314, 1 )
+scale = Vector2( 1030.17, 75 )
+mesh = SubResource( 4 )
+
+[node name="Node2D2" type="Node2D" parent="."]
+visible = false
+z_index = 3
+
+[node name="ColorRect" type="ColorRect" parent="Node2D2"]
+material = SubResource( 18 )
+margin_right = 1024.0
+margin_bottom = 600.0
